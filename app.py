@@ -2,6 +2,8 @@ import json, argparse
 from flask import Flask, request, send_from_directory, jsonify
 import os
 import mindsdb_sdk
+from handlers.trade_data_handler import get_latest_aggregated_trade_data
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '-c', '--config-path',
@@ -25,6 +27,8 @@ print(f"Model config loaded: {model_config}")
 
 # MindsDB connection
 mdb = None
+app = Flask(__name__, static_folder='public', static_url_path='')
+
 def connect_to_mindsdb():
     global mdb
     try:
@@ -36,8 +40,20 @@ def connect_to_mindsdb():
         print(f"✗ Failed to connect to MindsDB: {e}")
         exit(1)
 
-app = Flask(__name__, static_folder='public', static_url_path='')
 connect_to_mindsdb()
 
+# @app.route('/test')
+# def test():
+#     return jsonify({"status": "ok"})
+
+@app.route('/trade-data/<symbol_id>')
+def trade_data(symbol_id):
+    limit = request.args.get('limit', 1000, type=int)
+    if limit > 10000:
+        return jsonify({"error": f"Limit {limit} exceeds max of 10000"}), 400
+    
+    data = get_latest_aggregated_trade_data(mdb, symbol_id, limit)
+    return jsonify(data)
+
 if __name__ == '__main__':
-    app.run(port=3000, debug=True)
+    app.run(port=3000, debug=False)
