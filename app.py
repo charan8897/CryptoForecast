@@ -3,6 +3,7 @@ from flask import Flask, request, send_from_directory, jsonify
 import os
 import mindsdb_sdk
 from handlers.trade_data_handler import get_latest_aggregated_trade_data
+from handlers.forecast_handler import forecast_next_symbol_prices
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -54,6 +55,15 @@ def trade_data(symbol_id):
     
     data = get_latest_aggregated_trade_data(mdb, symbol_id, limit)
     return jsonify(data)
+
+@app.route('/forecast/<symbol_id>')
+def forecast(symbol_id):
+    if symbol_id not in model_config:
+        return jsonify({"error": f"Unsupported symbol {symbol_id}. No model available."}), 400
+    
+    model_name = model_config[symbol_id]
+    predictions = forecast_next_symbol_prices(mdb, symbol_id, model_name)
+    return jsonify(predictions)
 
 if __name__ == '__main__':
     app.run(port=3000, debug=False)
